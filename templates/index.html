@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <link rel="icon" href="../../../../favicon.ico">
+
+    <title>Sock Club Color Machine</title>
+
+    <!-- Bootstrap core CSS -->
+    <link href="/static/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Custom styles for this template -->
+    <link href="/static/css/jumbotron.css" rel="stylesheet">
+
+
+    <style>
+      .nav.nav-center {
+          margin:0;
+          float:none;
+      }
+
+      .navbar-inner{
+          text-align:center;
+      }
+      .img_wrap {
+          width: 3020px;  /*width of all images */
+      }
+      .horizontal-scroll-wrapper {
+        max-height: 500px;
+        overflow-y: auto;
+        overflow-x: hidden;
+      }
+    .scrolling-wrapper {
+      overflow-x: scroll;
+      overflow-y: hidden;
+      white-space: nowrap;
+    }
+
+    .scrolling-wrapper img {
+      display: inline-block;
+    }
+    </style>
+  </head>
+
+  <body>
+
+    <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
+      <div class="mx-auto order-0">
+        <form action="/file_upload" enctype="multipart/form-data" method="post">
+          <input type="file" name="file"/>
+          <button class="btn btn-outline-success nav-center navbar-inner navbar-brand mx-auto" type="submit">Upload New Design</button>
+        </form>
+      </div>
+    </nav>
+
+    <main role="main">
+
+      <!-- Main jumbotron for a primary marketing message or call to action -->
+      <div class="jumbotron">
+        <div class="container">
+          <h2 class="text-center" style="margin-bottom: 20px;">Select Design</h2>
+          <div class="scrolling-wrapper" style="margin-bottom: 20px;">
+              {% for d in designs %}
+                <img class="img_select" style="margin-right: 10px;" src="/design_serve/{{ d.key.id }}" height="300"/>
+              {% endfor %}
+              <img class="img_select" style="margin-right: 10px;" src="https://www.sockclub.com/images/squiggles.bmp" height="300"/>
+          </div>
+          <div class="row">
+            <form action="/" method="post" id="signup-form">
+              <input id="design_url" type="hidden" name="design" value="https://www.sockclub.com/images/squiggles.bmp" />
+              <button class="btn btn-primary btn-lg" type="submit">See Options &raquo;</button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div class="container">
+        <!-- Example row of columns -->
+        {% if show_colorways %}
+          <div class="row" style="margin-bottom: 20px;">
+            <div class="col-md-2">
+              <img src="/img_serve/{{colorways_id}}/0">
+            </div>
+            <div class="col-md-2">
+              <img src="/img_serve/{{colorways_id}}/1">
+            </div>
+            <div class="col-md-2">
+              <img src="/img_serve/{{colorways_id}}/2">
+            </div>
+            <div class="col-md-2">
+              <img src="/img_serve/{{colorways_id}}/3">
+            </div>
+            <div class="col-md-2">
+              <img src="/img_serve/{{colorways_id}}/4">
+            </div>
+            <div class="col-md-2">
+              <img src="/img_serve/{{colorways_id}}/5">
+            </div>
+          </div>
+          <div class="row" style="margin-bottom: 20px;">
+            <div class="col-md-2">
+              <img src="/img_serve/{{colorways_id}}/6">
+            </div>
+            <div class="col-md-2">
+              <img src="/img_serve/{{colorways_id}}/7">
+            </div>
+            <div class="col-md-2">
+              <img src="/img_serve/{{colorways_id}}/8">
+            </div>
+            <div class="col-md-2">
+              <img src="/img_serve/{{colorways_id}}/9">
+            </div>
+            <div class="col-md-2">
+              <img src="/img_serve/{{colorways_id}}/10">
+            </div>
+            <div class="col-md-2">
+              <img src="/img_serve/{{colorways_id}}/11">
+            </div>
+          </div>
+          <div class="row" style="margin-bottom: 20px;">
+            <div class="col-md-2">
+              <img src="/img_serve/{{colorways_id}}/12">
+            </div>
+            <div class="col-md-2">
+              <img src="/img_serve/{{colorways_id}}/13">
+            </div>
+            <div class="col-md-2">
+              <img src="/img_serve/{{colorways_id}}/14">
+            </div>
+            <div class="col-md-2">
+              <img src="/img_serve/{{colorways_id}}/15">
+            </div>
+            <div class="col-md-2">
+              <img src="/img_serve/{{colorways_id}}/16">
+            </div>
+            <div class="col-md-2">
+              <img src="/img_serve/{{colorways_id}}/17">
+            </div>
+          </div>
+          <div class="row" style="margin-bottom: 20px;">
+            <div class="col-md-2">
+              <img src="/img_serve/{{colorways_id}}/18">
+            </div>
+            <div class="col-md-2">
+              <img src="/img_serve/{{colorways_id}}/19">
+            </div>
+            <div class="col-md-2">
+              <img src="/img_serve/{{colorways_id}}/20">
+            </div>
+            <div class="col-md-2">
+              <img src="/img_serve/{{colorways_id}}/21">
+            </div>
+            <div class="col-md-2">
+              <img src="/img_serve/{{colorways_id}}/22">
+            </div>
+            <div class="col-md-2">
+              <img src="/img_serve/{{colorways_id}}/23">
+            </div>
+          </div>
+          <div class="row" style="margin-bottom: 20px;">
+            <div class="col-md-2">
+              <img src="/img_serve/{{colorways_id}}/24">
+            </div>
+            <div class="col-md-2">
+              <img src="/img_serve/{{colorways_id}}/25">
+            </div>
+            <div class="col-md-2">
+              <img src="/img_serve/{{colorways_id}}/26">
+            </div>
+            <div class="col-md-2">
+              <img src="/img_serve/{{colorways_id}}/27">
+            </div>
+            <div class="col-md-2">
+              <img src="/img_serve/{{colorways_id}}/28">
+            </div>
+            <div class="col-md-2">
+              <img src="/img_serve/{{colorways_id}}/29">
+            </div>
+          </div>
+          <div class="row" style="margin-bottom: 20px;">
+            <div class="col-md-2">
+              <img src="/img_serve/{{colorways_id}}/30">
+            </div>
+            <div class="col-md-2">
+              <img src="/img_serve/{{colorways_id}}/31">
+            </div>
+            <div class="col-md-2">
+              <img src="/img_serve/{{colorways_id}}/32">
+            </div>
+            <div class="col-md-2">
+              <img src="/img_serve/{{colorways_id}}/33">
+            </div>
+            <div class="col-md-2">
+              <img src="/img_serve/{{colorways_id}}/34">
+            </div>
+            <div class="col-md-2">
+              <img src="/img_serve/{{colorways_id}}/35">
+            </div>
+          </div>             
+        {% endif %}
+
+        <hr>
+
+      </div> <!-- /container -->
+
+    </main>
+
+    <footer class="container">
+      <p>&copy; Company 2017-2018</p>
+    </footer>
+
+    <!-- Bootstrap core JavaScript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script>
+      $(document).ready(function() {
+         $(".img_select").click(function() {
+            $(".img_select").css("border", "0px");
+            if(parseInt($(this).css("border")) == 0) {
+                $(this).css("border", "5px solid blue");
+                $("#design_url").val($(this).prop('src'))
+                //you can remove the id from array if you need to
+            }
+            else {
+               $(this).css("border", "0px solid blue");
+               // selectedImgsArr.push($(this).attr("id")); //something like this 
+            }
+         });
+      });
+    </script>
+  </body>
+</html>
