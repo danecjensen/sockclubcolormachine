@@ -61,7 +61,7 @@
       <!-- Main jumbotron for a primary marketing message or call to action -->
       <div class="jumbotron">
         <div class="container">
-          <h2 class="text-center" style="margin-bottom: 20px;">Select Design</h2>
+          <h2 class="text-center" style="margin-bottom: 20px;">Select Sock Design</h2>
           <div class="scrolling-wrapper" style="margin-bottom: 20px;">
               {% for d in designs %}
                 <img class="img_select" style="margin-right: 10px;" src="/design_serve/{{ d.key.id }}" height="300"/>
@@ -69,9 +69,13 @@
               <img class="img_select" style="margin-right: 10px;" src="https://www.sockclub.com/images/squiggles.bmp" height="300"/>
           </div>
           <div class="row">
-            <form action="/" method="post" id="signup-form">
+            <form action="/" method="post" id="signup-form" style="margin-right: 25px;">
               <input id="design_url" type="hidden" name="design" value="https://www.sockclub.com/images/squiggles.bmp" />
               <button class="btn btn-primary btn-lg" type="submit">See Options &raquo;</button>
+            </form>
+            <form action="/will_it_knit" method="post" id="signup-form">
+              <input id="design_url_will" type="hidden" name="design" value="https://www.sockclub.com/images/squiggles.bmp" />
+              <button class="btn btn-success btn-lg" type="submit">Will It Knit? &raquo;</button>
             </form>
           </div>
         </div>
@@ -223,6 +227,7 @@
             if(parseInt($(this).css("border")) == 0) {
                 $(this).css("border", "5px solid blue");
                 $("#design_url").val($(this).prop('src'))
+                $("#design_url_will").val($(this).prop('src'))
                 //you can remove the id from array if you need to
             }
             else {

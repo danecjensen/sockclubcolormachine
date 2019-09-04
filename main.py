@@ -29,9 +29,16 @@ import random
 from io import BytesIO
 import logging
 import mimetypes
+import json
+
+import boto3
+
 
 COLORS = ["#ece7d9", "#cdbfaa", "#000000", "#f4f3f3", "#f5bfca", "#1963ac", "#4f5457", "#f68d3f", "#9aa9ab", "#24aae1", "#db1280", "#d8cd4a", "#774679", "#288741", "#0d4166", "#92c9d5", "#9fc73c", "#6b232a",
           "#aa8e74", "#052a3f", "#2e3032", "#14b1be", "#ee502a", "#1e3e22", "#652257", "#d92026", "#b72327", "#129e7a", "#3f2c25", "#452971", "#f8bb15", "#00867b", "#6c9d40", "#29358d", "#f8e03a", "#5ca2d8", "#e34f94"]
+
+awslambda = boto3.client('lambda', aws_access_key_id="AKIAJDDQRXPHFCLTR35A",
+                         aws_secret_access_key="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", region_name='us-east-1')
 
 
 def convert_color(c1, c2, data):
@@ -46,6 +53,11 @@ def hex_to_rgb(hex):
     hex = hex.lstrip('#')
     hlen = len(hex)
     return tuple(int(hex[i:i + int(hlen / 3)], 16) for i in range(0, hlen, int(hlen / 3)))
+
+
+def chunks(l, n):
+    for i in range(0, len(l) - n):
+        yield l[i:i + n]
 
 
 class Design(ndb.Model):
@@ -143,6 +155,93 @@ class ArgyleBitmapBuilderPage(webapp2.RequestHandler):
         self.response.out.write(page)
 
 
+class KnitPage(webapp2.RequestHandler):
+
+    def get(self):
+        # cgi.escape(self.request.get('username'))
+        # template_id = cgi.escape(self.request.get('template_id'))
+        designs = Design.query_all()
+        wik = os.path.join(os.path.dirname(__file__),
+                           'templates', "will_it_knit.html")
+        page = template.render(wik, {'designs': designs})
+        self.response.out.write(page)
+
+    def post(self):
+        designs = Design.query_all()
+        design = cgi.escape(self.request.get('design'))
+        file = BytesIO(
+            urllib2.urlopen(design).read())
+        im = Image.open(file)
+        im = im.convert('RGB')
+        pixels = list(im.getdata())
+        width, height = im.size
+        pixels = [pixels[i * width:(i + 1) * width] for i in xrange(height)]
+        errors = ""
+        row = 1
+        wik_word = "YES"
+        for i in pixels:
+            # print i
+            # print len(set(i))
+            if (len(set(i)) > 6):
+                errors = errors + "Too many colors on row: " + str(row) + "\n"
+
+            for c in chunks(i, 30):
+                if (len(set(c)) > 4):
+                    errors = errors + "More than 5 colors in 30 stitches on row: " + \
+                        str(row) + "\n"
+
+            row = row + 1
+
+        if errors != "":
+            wik_word = "NO"
+
+        wik = os.path.join(os.path.dirname(__file__),
+                           'templates', "will_it_knit.html")
+        page = template.render(
+            wik, {'show_wik': True, 'wik_word': wik_word, 'errors': errors, 'designs': designs})
+        self.response.out.write(page)
+
+
+class DeckCreationPage(webapp2.RequestHandler):
+
+    def get(self):
+        # cgi.escape(self.request.get('username'))
+        # template_id = cgi.escape(self.request.get('template_id'))
+        designs = Design.query_all()
+        dc = os.path.join(os.path.dirname(__file__),
+                          'templates', "deck_creation.html")
+        page = template.render(dc, {'designs': designs, 'show_results': False})
+        self.response.out.write(page)
+
+    def post(self):
+        designs = Design.query_all()
+        design = cgi.escape(self.request.get('design'))
+        data = {
+            'bmp': design, 'filename': "blah"}
+        response = awslambda.invoke(
+            FunctionName='arn:aws:lambda:us-east-1:981532365545:function:create_deck_images', InvocationType='RequestResponse', Payload=json.dumps(data))
+
+        result = json.loads(response.get('Payload').read())
+
+        dc = os.path.join(os.path.dirname(__file__),
+                          'templates', "deck_creation.html")
+        page = template.render(
+            dc, {'designs': designs, 'fsb': result['body']['fsb'], 'page1': result['body']['page1'], 'page2': result['body']['page2'], 'show_results': True})
+        self.response.out.write(page)
+
+
+class LambdaPage(webapp2.RequestHandler):
+
+    def get(self):
+        data = {
+            'bmp': "http://sockclubcolormachine.appspot.com/bmp_serve/5688727628152832", 'filename': "blah"}
+        response = awslambda.invoke(
+            FunctionName='arn:aws:lambda:us-east-1:981532365545:function:create_deck_images', InvocationType='RequestResponse', Payload=json.dumps(data))
+
+        self.response.headers['Content-Type'] = 'application/json'
+        self.response.out.write(response.get('Payload').read())
+
+
 class FileUpload(webapp2.RequestHandler):
 
     def post(self):
@@ -164,6 +263,17 @@ class ImgServe(webapp2.RequestHandler):
         self.response.write(colorways.sock_colorways[int(sock_id)])
 
 
+class BmpServe(webapp2.RequestHandler):
+
+    def get(self, resource):
+
+        # design = ndb.Key('Design', resource).get()
+        design = Design.get_by_id(int(resource))
+        # design = Design.get(resource)
+        self.response.headers['Content-Type'] = "image/bmp"
+        self.response.write(design.image)
+
+
 class DesignServe(webapp2.RequestHandler):
 
     def get(self, resource):
@@ -177,9 +287,14 @@ class DesignServe(webapp2.RequestHandler):
 
 app = webapp2.WSGIApplication([
     ('/', MainPage),
+    ('/will_it_knit', KnitPage),
     ('/bitmap_builder', ArgyleBitmapBuilderPage),
+    ('/lambda', LambdaPage),
+    ('/deck_creation', DeckCreationPage),
     webapp2.Route(r'/img_serve/<colorways_id:\d+>/<sock_id:\d+>',
                   handler=ImgServe),
+    webapp2.Route(r'/bmp_serve/<resource:\d+>',
+                  handler=BmpServe),
     webapp2.Route(r'/file_upload', handler=FileUpload),
     webapp2.Route(r'/design_serve/<resource:(.*)>', handler=DesignServe)
 ], debug=True)
