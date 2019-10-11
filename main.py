@@ -23,6 +23,7 @@ from google.appengine.ext import vendor
 vendor.add('lib')
 
 import numpy as np
+import PIL
 from PIL import Image
 import urllib2
 import random
@@ -82,10 +83,18 @@ class Design(ndb.Model):
         return cls.query().order(-cls.created)
 
     @classmethod
+    def query_20(cls):
+        return cls.query().order(-cls.created).fetch(limit=20)
+
+    @classmethod
+    def query_20_run(cls):
+        return cls.query().order(-cls.created).run(limit=20)
+
+    @classmethod
     def get_all(cls):
         q = cls.Query()
         q.order('-created')
-        return q.fetch(20)
+        return q.fetch(limit=20)
 
 
 class Colorways(ndb.Model):
@@ -93,10 +102,19 @@ class Colorways(ndb.Model):
     sock_colorways = ndb.BlobProperty(repeated=True)
 
 
+class Deck(ndb.Model):
+    client_name = ndb.StringProperty()
+    created = ndb.DateTimeProperty(auto_now_add=True)
+
+    @property
+    def designs(self):
+        return Design.query(ancestor=self.key)
+
+
 class MainPage(webapp2.RequestHandler):
 
     def get(self):
-        designs = Design.query_all()
+        designs = Design.query_20()
         home = os.path.join(os.path.dirname(__file__),
                             'templates', "index.html")
         page = template.render(
@@ -104,7 +122,7 @@ class MainPage(webapp2.RequestHandler):
         self.response.out.write(page)
 
     def post(self):
-        designs = Design.query_all()
+        designs = Design.query_20()
         design = cgi.escape(self.request.get('design'))
         file = BytesIO(
             urllib2.urlopen(design).read())
@@ -143,6 +161,33 @@ class MainPage(webapp2.RequestHandler):
         self.response.out.write(page)
 
 
+class PDFTest(webapp2.RequestHandler):
+
+    def get(self):
+        images = []
+        file = BytesIO(urllib2.urlopen(
+            "https://account-sockclub-com.s3.amazonaws.com/deck_creation/5694660253057024_deck_page1.jpg").read())
+        im = Image.open(file)
+        im = im.convert('RGB')
+        im = im.resize((595, 842), Image.ANTIALIAS)
+
+        file = BytesIO(urllib2.urlopen(
+            "https://account-sockclub-com.s3.amazonaws.com/deck_creation/5694660253057024_deck_page2.jpg").read())
+        im2 = Image.open(file)
+        im2 = im2.convert('RGB')
+        im2 = im2.resize((595, 842), Image.ANTIALIAS)
+
+        images.append(im2)
+
+        logging.info(PIL.__version__)
+
+        pdf = BytesIO()
+        im.save(pdf, "PDF", quality=100, save_all=True, append_images=images)
+        # logging.info(pdf.getvalue())
+        self.response.headers['Content-Type'] = "application/pdf"
+        self.response.out.write(pdf.getvalue())
+
+
 class ArgyleBitmapBuilderPage(webapp2.RequestHandler):
 
     def get(self):
@@ -160,14 +205,14 @@ class KnitPage(webapp2.RequestHandler):
     def get(self):
         # cgi.escape(self.request.get('username'))
         # template_id = cgi.escape(self.request.get('template_id'))
-        designs = Design.query_all()
+        designs = Design.query_20()
         wik = os.path.join(os.path.dirname(__file__),
                            'templates', "will_it_knit.html")
         page = template.render(wik, {'designs': designs})
         self.response.out.write(page)
 
     def post(self):
-        designs = Design.query_all()
+        designs = Design.query_20()
         design = cgi.escape(self.request.get('design'))
         file = BytesIO(
             urllib2.urlopen(design).read())
@@ -178,7 +223,9 @@ class KnitPage(webapp2.RequestHandler):
         pixels = [pixels[i * width:(i + 1) * width] for i in xrange(height)]
         errors = ""
         row = 1
+        last_row_printed = 0
         wik_word = "YES"
+        wik_bool = True
         for i in pixels:
             # print i
             # print len(set(i))
@@ -187,13 +234,16 @@ class KnitPage(webapp2.RequestHandler):
 
             for c in chunks(i, 30):
                 if (len(set(c)) > 4):
-                    errors = errors + "More than 5 colors in 30 stitches on row: " + \
-                        str(row) + "\n"
+                    if last_row_printed != row:
+                        errors = errors + "More than 5 colors in 30 stitches on row: " + \
+                            str(row) + "\n"
+                        last_row_printed = row
 
             row = row + 1
 
         if errors != "":
             wik_word = "NO"
+            wik_bool = False
 
         wik = os.path.join(os.path.dirname(__file__),
                            'templates', "will_it_knit.html")
@@ -207,17 +257,18 @@ class DeckCreationPage(webapp2.RequestHandler):
     def get(self):
         # cgi.escape(self.request.get('username'))
         # template_id = cgi.escape(self.request.get('template_id'))
-        designs = Design.query_all()
+        designs = Design.query_20()
         dc = os.path.join(os.path.dirname(__file__),
                           'templates', "deck_creation.html")
         page = template.render(dc, {'designs': designs, 'show_results': False})
         self.response.out.write(page)
 
     def post(self):
-        designs = Design.query_all()
+        designs = Design.query_20()
         design = cgi.escape(self.request.get('design'))
         data = {
-            'bmp': design, 'filename': "blah"}
+            'bmp': design, 'filename': "blah", "topColor": "cyan", "heelColor": "cyan", "toeColor": "cyan"}
+        logging.info(data)
         response = awslambda.invoke(
             FunctionName='arn:aws:lambda:us-east-1:981532365545:function:create_deck_images', InvocationType='RequestResponse', Payload=json.dumps(data))
 
@@ -230,16 +281,52 @@ class DeckCreationPage(webapp2.RequestHandler):
         self.response.out.write(page)
 
 
+class FSBImagePage(webapp2.RequestHandler):
+
+    def get(self):
+        # cgi.escape(self.request.get('username'))
+        # template_id = cgi.escape(self.request.get('template_id'))
+        designs = Design.query_20()
+        dc = os.path.join(os.path.dirname(__file__),
+                          'templates', "fsb_image.html")
+        page = template.render(dc, {'designs': designs, 'show_results': False})
+        self.response.out.write(page)
+
+    def post(self):
+        designs = Design.query_20()
+        design = cgi.escape(self.request.get('design'))
+        data = {
+            'bmp': design, 'filename': "blah"}
+        logging.info(data)
+        response = awslambda.invoke(
+            FunctionName='arn:aws:lambda:us-east-1:981532365545:function:create_fsb_image', InvocationType='RequestResponse', Payload=json.dumps(data))
+
+        result = json.loads(response.get('Payload').read())
+
+        dc = os.path.join(os.path.dirname(__file__),
+                          'templates', "fsb_image.html")
+        page = template.render(
+            dc, {'designs': designs, 'fsb': result['body']['fsb'], 'show_results': True})
+        self.response.out.write(page)
+
+
 class LambdaPage(webapp2.RequestHandler):
 
     def get(self):
         data = {
-            'bmp': "http://sockclubcolormachine.appspot.com/bmp_serve/5688727628152832", 'filename': "blah"}
+            'bmp': "http://sockclubcolormachine.appspot.com/bmp_serve/5631568827645952", 'filename': "blah", "topColor": "cyan", "heelColor": "cyan", "toeColor": "cyan"}
         response = awslambda.invoke(
             FunctionName='arn:aws:lambda:us-east-1:981532365545:function:create_deck_images', InvocationType='RequestResponse', Payload=json.dumps(data))
+        pdf_images = []
+        result = json.loads(response.get('Payload').read())
+        pdf_images.append(result['body']['page1'])
+        pdf_images.append(result['body']['page2'])
 
-        self.response.headers['Content-Type'] = 'application/json'
-        self.response.out.write(response.get('Payload').read())
+        lp = os.path.join(os.path.dirname(__file__),
+                          'templates', "lambda_page.html")
+        page = template.render(
+            lp, {'pdf_images': pdf_images, 'result': result})
+        self.response.out.write(page)
 
 
 class FileUpload(webapp2.RequestHandler):
@@ -274,6 +361,28 @@ class BmpServe(webapp2.RequestHandler):
         self.response.write(design.image)
 
 
+class BmpServeKey(webapp2.RequestHandler):
+
+    def get(self, resource):
+
+        design = ndb.Key(urlsafe=resource).get()
+        # design = Design.get_by_id(int(resource))
+        # design = dkey.get()
+        self.response.headers['Content-Type'] = "image/bmp"
+        self.response.write(design.image)
+
+
+class BmpServeDeck(webapp2.RequestHandler):
+
+    def get(self, deck_id, design_id):
+        design = ndb.Key(Deck, deck_id, Design, design_id).get()
+        logging.info(ndb.Key(Deck, deck_id, Design, design_id).urlsafe())
+        logging.info(ndb.Key(Deck, deck_id, Design, design_id).id())
+        logging.info(ndb.Key(Deck, deck_id, Design, design_id).string_id())
+        self.response.headers['Content-Type'] = "image/bmp"
+        self.response.write(design.image)
+
+
 class DesignServe(webapp2.RequestHandler):
 
     def get(self, resource):
@@ -285,16 +394,109 @@ class DesignServe(webapp2.RequestHandler):
             b'Content-Type'] = mimetypes.guess_type(design.filename)[0]
         self.response.write(design.image)
 
+
+class BitmapUploadPage(webapp2.RequestHandler):
+
+    def get(self):
+        # cgi.escape(self.request.get('username'))
+        # template_id = cgi.escape(self.request.get('template_id'))
+
+        bu = os.path.join(os.path.dirname(__file__),
+                          'templates', "bitmap_upload.html")
+        page = template.render(bu, {})
+        self.response.out.write(page)
+
+    def post(self):
+        files = self.request.POST
+        # logging.info("file_upload variable: " + str(files))
+        deck = Deck(client_name="Sock Club Custom Socks")
+        deck_key = deck.put()
+        for file in files.values():
+            # logging.info("file variable: " + str(file))
+            # logging.info("file filename variable: " + str(file.filename))
+            # logging.info("file file variable: " + str(file.file))
+            # design = Design(filename=file.filename, image=file.file.read())
+            Design(parent=deck_key, filename=file.filename,
+                   image=file.file.read()).put()
+
+        self.redirect('/deck/' + str(deck_key.id()))
+
+
+class DeckPage(webapp2.RequestHandler):
+
+    def get(self, resource):
+        deck = Deck.get_by_id(int(resource))
+        dc = os.path.join(os.path.dirname(__file__),
+                          'templates', "deck_page.html")
+        page = template.render(dc, {'deck': deck})
+        self.response.out.write(page)
+
+
+# class PdfPage(webapp2.RequestHandler):
+
+#     def get(self, resource):
+#         deck = Deck.get_by_id(int(resource))
+#         dc = os.path.join(os.path.dirname(__file__),
+#                           'templates', "pdf_page.html")
+#         page = template.render(dc, {'deck': deck})
+#         self.response.out.write(page)
+
+
+class PdfDeckCreation(webapp2.RequestHandler):
+
+    def post(self):
+        deck_id = cgi.escape(self.request.get('deckId'))
+        deck = Deck.get_by_id(int(deck_id))
+        design_entities = deck.designs.fetch()
+
+        pdf_images = []
+
+        for i in range(len(design_entities)):
+            heelStr = "heelColor_" + str(i + 1)
+            topStr = "topColor_" + str(i + 1)
+            toeStr = "toeColor_" + str(i + 1)
+            heel_form_data = cgi.escape(self.request.get(heelStr))
+            toe_form_data = cgi.escape(self.request.get(toeStr))
+            top_form_data = cgi.escape(self.request.get(topStr))
+            logging.info(heel_form_data)
+            logging.info(top_form_data)
+            logging.info(toe_form_data)
+
+            design_url = "http://sockclubcolormachine.appspot.com/bmp_serve_key/" + \
+                str(design_entities[i].key.urlsafe())
+            data = {'bmp': design_url, 'filename': design_entities[
+                i].key.id(), 'topColor': top_form_data, 'toeColor': toe_form_data, 'heelColor': heel_form_data}
+            logging.info(data)
+            response = awslambda.invoke(FunctionName='arn:aws:lambda:us-east-1:981532365545:function:create_deck_images',
+                                        InvocationType='RequestResponse', Payload=json.dumps(data))
+            result = json.loads(response.get('Payload').read())
+            pdf_images.append(result['body']['page1'])
+            pdf_images.append(result['body']['page2'])
+
+        pp = os.path.join(os.path.dirname(__file__),
+                          'templates', "pdf_page.html")
+        page = template.render(pp, {'pdf_images': pdf_images})
+        self.response.out.write(page)
+
 app = webapp2.WSGIApplication([
     ('/', MainPage),
     ('/will_it_knit', KnitPage),
     ('/bitmap_builder', ArgyleBitmapBuilderPage),
     ('/lambda', LambdaPage),
     ('/deck_creation', DeckCreationPage),
+    ('/fsb_image', FSBImagePage),
+    ('/bitmap_upload', BitmapUploadPage),
+    ('/pdf_creation', PdfDeckCreation),
+    ('/pdf_test', PDFTest),
     webapp2.Route(r'/img_serve/<colorways_id:\d+>/<sock_id:\d+>',
                   handler=ImgServe),
     webapp2.Route(r'/bmp_serve/<resource:\d+>',
                   handler=BmpServe),
+    webapp2.Route(r'/bmp_serve_key/<resource:(.*)>',
+                  handler=BmpServeKey),
+    webapp2.Route(r'/bmp_serve_deck/<deck_id:\d+>/<design_id:\d+>',
+                  handler=BmpServeDeck),
     webapp2.Route(r'/file_upload', handler=FileUpload),
-    webapp2.Route(r'/design_serve/<resource:(.*)>', handler=DesignServe)
+    webapp2.Route(r'/design_serve/<resource:(.*)>', handler=DesignServe),
+    webapp2.Route(r'/deck/<resource:(.*)>', handler=DeckPage),
 ], debug=True)

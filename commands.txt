@@ -1,1 +1,4 @@
 gcloud app deploy app.yaml --project sockclubcolormachine
+python2 /Users/dane/Playground/google-cloud-sdk/bin/dev_appserver.py app.yaml
+
+gcloud config configurations activate default

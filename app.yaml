@@ -11,12 +11,13 @@ handlers:
 
 libraries:
 - name: PIL
-  version: "1.1.7"
+  version: latest
 
 - name: numpy
   version:  "1.6.1"
 
 - name: ssl
   version: 2.7.11
+  
 # skip_files:
 #     - sitepackages/PIL*
