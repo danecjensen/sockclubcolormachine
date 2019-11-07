@@ -64,7 +64,12 @@
           <h2 class="text-center" style="margin-bottom: 20px;">Select Sock Design</h2>
           <div class="scrolling-wrapper" style="margin-bottom: 20px;">
               {% for d in designs %}
-                <img class="img_select" style="margin-right: 10px;" src="/design_serve/{{ d.key.id }}" height="300"/>
+                {% if "Deck" in d.key %}
+                  <img class="img_select" style="margin-right: 10px;" src="/design_serve/{{ d.key.id }}" height="300"/>
+                {% else %}
+                  <img class="img_select" style="margin-right: 10px;" src="/bmp_serve_key/{{ d.key.urlsafe }}" height="300"/>
+                {% endif %}
+                <p style="display: none;">{{d.key}}</p>
               {% endfor %}
               <img class="img_select" style="margin-right: 10px;" src="https://www.sockclub.com/images/squiggles.bmp" height="300"/>
           </div>

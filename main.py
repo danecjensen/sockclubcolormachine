@@ -450,6 +450,7 @@ class PdfDeckCreation(webapp2.RequestHandler):
         design_entities = deck.designs.fetch()
 
         pdf_images = []
+        pdf_filename = str(deck_id) + ".pdf"
 
         for i in range(len(design_entities)):
             heelStr = "heelColor_" + str(i + 1)
@@ -469,13 +470,22 @@ class PdfDeckCreation(webapp2.RequestHandler):
             logging.info(data)
             response = awslambda.invoke(FunctionName='arn:aws:lambda:us-east-1:981532365545:function:create_deck_images',
                                         InvocationType='RequestResponse', Payload=json.dumps(data))
+            logging.critical("Response: \n")
+            logging.critical(response)
             result = json.loads(response.get('Payload').read())
-            pdf_images.append(result['body']['page1'])
-            pdf_images.append(result['body']['page2'])
+            logging.critical("Result: \n")
+            logging.critical(result)
+            if result.has_key("body"):
+                pdf_images.append(result['body']['page1'])
+                pdf_images.append(result['body']['page2'])
+
+        response2 = awslambda.invoke(FunctionName='arn:aws:lambda:us-east-1:981532365545:function:images2pdf',
+                                     InvocationType='RequestResponse', Payload=json.dumps({"images": pdf_images, "filename": pdf_filename}))
 
         pp = os.path.join(os.path.dirname(__file__),
                           'templates', "pdf_page.html")
-        page = template.render(pp, {'pdf_images': pdf_images})
+        page = template.render(
+            pp, {'pdf_images': pdf_images, "pdf_filename": pdf_filename})
         self.response.out.write(page)
 
 app = webapp2.WSGIApplication([
