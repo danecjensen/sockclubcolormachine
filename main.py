@@ -507,7 +507,7 @@ class ZipDeckCreation(webapp2.RequestHandler):
             toe_form_data = cgi.escape(self.request.get(toeStr))
             top_form_data = cgi.escape(self.request.get(topStr))
 
-            filename_num = 2 * i - 1
+            filename_num = 2 * (i + 1) - 1
 
             design_url = "http://sockclubcolormachine.appspot.com/bmp_serve_key/" + \
                 str(design_entities[i].key.urlsafe())
