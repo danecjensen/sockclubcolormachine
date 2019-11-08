@@ -488,6 +488,50 @@ class PdfDeckCreation(webapp2.RequestHandler):
             pp, {'pdf_images': pdf_images, "pdf_filename": pdf_filename})
         self.response.out.write(page)
 
+
+class ZipDeckCreation(webapp2.RequestHandler):
+
+    def post(self):
+        deck_id = cgi.escape(self.request.get('deckId'))
+        deck = Deck.get_by_id(int(deck_id))
+        design_entities = deck.designs.fetch()
+
+        pdf_images = []
+        pdf_filename = str(deck_id) + ".zip"
+
+        for i in range(len(design_entities)):
+            heelStr = "heelColor_" + str(i + 1)
+            topStr = "topColor_" + str(i + 1)
+            toeStr = "toeColor_" + str(i + 1)
+            heel_form_data = cgi.escape(self.request.get(heelStr))
+            toe_form_data = cgi.escape(self.request.get(toeStr))
+            top_form_data = cgi.escape(self.request.get(topStr))
+
+            filename_num = 2 * i - 1
+
+            design_url = "http://sockclubcolormachine.appspot.com/bmp_serve_key/" + \
+                str(design_entities[i].key.urlsafe())
+            data = {'bmp': design_url, 'filename': str(
+                filename_num), 'topColor': top_form_data, 'toeColor': toe_form_data, 'heelColor': heel_form_data, 'deckNumber': str(deck_id)}
+            logging.info(data)
+            response = awslambda.invoke(FunctionName='arn:aws:lambda:us-east-1:981532365545:function:deck_folder_out',
+                                        InvocationType='RequestResponse', Payload=json.dumps(data))
+
+            result = json.loads(response.get('Payload').read())
+            if result.has_key("body"):
+                pdf_images.append(result['body']['page1'])
+                pdf_images.append(result['body']['page2'])
+
+        response2 = awslambda.invoke(FunctionName='arn:aws:lambda:us-east-1:981532365545:function:zip_s3_folder',
+                                     InvocationType='RequestResponse', Payload=json.dumps({"folder": str(deck_id)}))
+
+        pp = os.path.join(os.path.dirname(__file__),
+                          'templates', "pdf_page.html")
+        page = template.render(
+            pp, {'pdf_images': pdf_images, "pdf_filename": pdf_filename})
+        self.response.out.write(page)
+
+
 app = webapp2.WSGIApplication([
     ('/', MainPage),
     ('/will_it_knit', KnitPage),
@@ -497,6 +541,7 @@ app = webapp2.WSGIApplication([
     ('/fsb_image', FSBImagePage),
     ('/bitmap_upload', BitmapUploadPage),
     ('/pdf_creation', PdfDeckCreation),
+    ('/zip_creation', ZipDeckCreation),
     ('/pdf_test', PDFTest),
     webapp2.Route(r'/img_serve/<colorways_id:\d+>/<sock_id:\d+>',
                   handler=ImgServe),
