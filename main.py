@@ -56,6 +56,11 @@ def hex_to_rgb(hex):
     return tuple(int(hex[i:i + int(hlen / 3)], 16) for i in range(0, hlen, int(hlen / 3)))
 
 
+def rgb_to_hex(rgb):
+    r, g, b = rgb
+    return "#{:02x}{:02x}{:02x}".format(r, g, b)
+
+
 def chunks(l, n):
     for i in range(0, len(l) - n):
         yield l[i:i + n]
@@ -218,7 +223,9 @@ class KnitPage(webapp2.RequestHandler):
             urllib2.urlopen(design).read())
         im = Image.open(file)
         im = im.convert('RGB')
+        colors_array = im.getcolors()
         pixels = list(im.getdata())
+        pixel_floor = int(round(len(pixels) * 0.39))
         width, height = im.size
         pixels = [pixels[i * width:(i + 1) * width] for i in xrange(height)]
         errors = ""
@@ -226,23 +233,42 @@ class KnitPage(webapp2.RequestHandler):
         last_row_printed = 0
         wik_word = "YES"
         wik_bool = True
+
+        no_background_color = True
+        for colorcount in colors_array:
+            if (colorcount[0] > pixel_floor):
+                has_background_color = False
+
+        if no_background_color:
+            errors = errors + "This design doesn't have a significant background color.\n  Here's the pixel color count:\n" + \
+                str(colors_array) + "\n\n"
+
         for i in pixels:
             # print i
             # print len(set(i))
-            if (len(set(i)) > 6):
+            if (len(set(i)) > 7):
                 errors = errors + "Too many colors on row: " + str(row) + "\n"
 
-            for c in chunks(i, 30):
-                if (len(set(c)) > 4):
-                    if last_row_printed != row:
-                        errors = errors + "More than 5 colors in 30 stitches on row: " + \
-                            str(row) + "\n"
-                        last_row_printed = row
+            # for c in chunks(i, 30):
+            #     if (len(set(c)) > 4):
+            #         if last_row_printed != row:
+            #             errors = errors + "More than 5 colors in 30 stitches on row: " + \
+            #                 str(row) + "\n"
+            #             last_row_printed = row
+
+            color_change_count = 0
+            for cc in chunks(i, 2):
+                if (len(set(cc)) > 1):
+                    color_change_count = color_change_count + 1
+
+            if (color_change_count > 27):
+                errors = errors + "Too many color changes on row: " + \
+                    str(row) + "\n"
 
             row = row + 1
 
         if errors != "":
-            wik_word = "NO"
+            wik_word = "CHECK WITH MAX AND OPERATIONS"
             wik_bool = False
 
         wik = os.path.join(os.path.dirname(__file__),
