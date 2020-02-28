@@ -237,7 +237,7 @@ class KnitPage(webapp2.RequestHandler):
         no_background_color = True
         for colorcount in colors_array:
             if (colorcount[0] > pixel_floor):
-                has_background_color = False
+                no_background_color = False
 
         if no_background_color:
             errors = errors + "This design doesn't have a significant background color.\n  Here's the pixel color count:\n" + \
